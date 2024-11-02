@@ -17,6 +17,11 @@ def matrix2bytes(matrix):
     return byte_string
 
 #Hàm tiện ích
+
+def print_matrix(matrix):
+    for rows in matrix:
+        print(rows)
+
 def get_file_type(file_path):
     file_signatures = {
         b'\x89PNG\r\n\x1a\n': 'PNG',
@@ -40,6 +45,11 @@ def get_file_type(file_path):
                 return file_signatures[signature]
 
     return 'DAT'
+
+def show_matrix(matrix):
+    for line in matrix:
+        print(line, end='\n')
+    print(f"Size : {len(matrix)}x{len(matrix[0])}\n")
     
 def change_extension(file_path):
     path, filename = os.path.split(file_path)
@@ -109,7 +119,9 @@ class AES:
 
     #Tạo khóa vòng bằng cách mở rộng khóa có sẵn
     def create_round_key(self, matrix_key):
-        self.round_keys = self.matrix_key
+        self.round_keys = [[] for i in range(4)]
+        for i in range(4):
+            self.round_keys[i] = self.matrix_key[i]
 
         for i in range(4, 4 * 11):
             self.round_keys.append([])
@@ -155,13 +167,13 @@ class AES:
             self.mix_single_column(s[i])
         return s
 
-    def add_round_key(self, s, k):
+    def add_round_key(self, s: list[list[int]], k: list[list[int]]) -> list[list[int]]: 
         for i in range(4):
             for j in range(4):
                 s[i][j] ^= k[i][j]
         return s
 
-    def encrypt(self, s):
+    def encrypt(self, s: str) -> str:
         self.text_matrix = bytes2matrix(s)
         self.text_matrix = self.add_round_key(self.text_matrix, self.round_keys[:4])
 
@@ -175,8 +187,7 @@ class AES:
         self.text_matrix = self.shift_rows(self.text_matrix)
         self.text_matrix = self.add_round_key(self.text_matrix, self.round_keys[40:])
 
-        self.text_encrypt = matrix2bytes(self.text_matrix)
-
+        return matrix2bytes(self.text_matrix)
 
     #Giải mã
 
@@ -203,7 +214,7 @@ class AES:
 
         return self.mix_columns(s)
     
-    def decrypt(self, s):
+    def decrypt(self, s: str) -> str:
         self.decrypt_matrix = bytes2matrix(s)
         self.decrypt_matrix = self.add_round_key(self.decrypt_matrix, self.round_keys[40:])
         self.decrypt_matrix = self.inv_shift_rows(self.decrypt_matrix)
@@ -216,8 +227,53 @@ class AES:
             self.decrypt_matrix = self.inv_sub_bytes(self.decrypt_matrix)
 
         self.decrypt_matrix = self.add_round_key(self.decrypt_matrix, self.round_keys[:4])
-        self.decrypt_text = matrix2bytes(self.decrypt_matrix)
+        return matrix2bytes(self.decrypt_matrix)
     
+    #Unicode
+
+    def unicode_encrypt(self, data: str) -> str:
+        #Input with unicode string but will return bytes string
+        encrypt_data = data.encode(encoding='utf-8')
+        encrypt_data = self.encrypt(encrypt_data)
+        return encrypt_data
+
+    def unicode_decrypt(self, data: str) -> str:
+
+        #Input with bytes string but will return uncode string
+        decrypt_data = self.decrypt(data)
+        data = decrypt_data.decode('utf-8')
+        return data
+
+    #Larger than 16 bytes
+
+    def unbound_encrypt(self, data: str) -> str:
+        encrypt_data = b''
+        for i in range(0, len(data), 16):
+            encrypt_data += self.encrypt(data[i:i + 16])
+        return encrypt_data
+
+    def unbound_decrypt(self, data: str) -> str:
+        decrypt_data = b''
+        for i in range(0, len(data), 16):
+            decrypt_data += self.decrypt(data[i:i + 16])
+        return decrypt_data
+
+    #Unicode stirng larger than 16 bytes
+    
+    def string_encrypt(self, data: str) -> str:
+        encrypt_data = b''
+        for i in range(0, len(data), 16):
+            encrypt_data += self.unicode_encrypt(data[i:i + 16])
+        return encrypt_data
+
+    def string_decrypt(self, data: str) -> str:
+        decrypt_data = ''
+        for i in range(0, len(data), 16):
+            decrypt_data += self.unicode_decrypt(data[i:i + 16])
+        return decrypt_data
+
+    #File
+
     def encrypt_file(self, input_path, output_path):
         with open(input_path, 'rb') as infile, open(output_path, 'wb') as outfile:
             while True:
@@ -239,6 +295,181 @@ class AES:
                 self.decrypt(data)
                 
                 outfile.write(self.decrypt_text)
+
+    #Process
+
+    def show_func(self, func, data: str, *args) -> str:
+        # if args != ():
+        #     print(args)
+        matrix_data = bytes2matrix(data)
+        new_data = func(matrix_data, *args)
+        new_string = matrix2bytes(new_data)
+        print(new_string.hex())
+        return new_string
+
+    #Chi dung data duoi 16 bytes de minh hoa qua trinh  
+
+    def show_process_encrypt(self, data: str) -> str:
+        print('Key             : ', self.key)
+        print('Data to encrypt : ', data)
+        print('Key             : ', self.key.hex())
+        print('Data to encrypt : ', data.hex())
+        
+        print('Round 0: ')
+        print('Add Round key: ', end='')
+        encrypt_data = self.show_func(self.add_round_key, data, self.round_keys[:4])
+
+        for i in range(1, 10):
+            print(f'Round {str(i)}: ')
+            print('Sub Bytes    : ', end='')
+            encrypt_data = self.show_func(self.sub_bytes, encrypt_data)
+            print('Shift rows   : ', end='')
+            encrypt_data = self.show_func(self.shift_rows, encrypt_data)
+            print('Mix columns  : ', end='')
+            encrypt_data = self.show_func(self.mix_columns, encrypt_data)
+            print('Add Round key: ', end='')
+            encrypt_data = self.show_func(self.add_round_key, encrypt_data, self.round_keys[4 * i: 4 * (i + 1)])
+        
+        print('Round 10: ')
+        print('Sub Bytes    : ', end='')
+        encrypt_data = self.show_func(self.sub_bytes, encrypt_data)
+        print('Shift rows   : ', end='')
+        encrypt_data = self.show_func(self.shift_rows, encrypt_data)
+        print('Add Round key: ', end='')
+        encrypt_data = self.show_func(self.add_round_key, encrypt_data, self.round_keys[40:])
+
+        print('Encrypt data :', encrypt_data.hex())
+
+        print('Encrypt Done!')
+        
+        return encrypt_data
+
+    def show_process_decrypt(self, data: str) -> str:
+        print('Encrypt data : ', data.hex())
+        print('Round 0: ')
+        print('Add Round key: ', end='')
+        decrypt_data = self.show_func(self.add_round_key, data, self.round_keys[40:])
+        print('Shift rows   : ', end='')
+        decrypt_data = self.show_func(self.inv_shift_rows, decrypt_data)
+        print('Sub Bytes    : ', end='')
+        decrypt_data = self.show_func(self.inv_sub_bytes, decrypt_data)
+
+        for i in range(9, 0, -1):
+            print(f'Round {str(10 - i)}: ')
+            print('Add Round key    : ', end='')
+            decrypt_data = self.show_func(self.add_round_key, decrypt_data, self.round_keys[4 * i: 4 * (i + 1)])
+            print('Inv mix columns  : ', end='')
+            decrypt_data = self.show_func(self.inv_mix_columns, decrypt_data)
+            print('Inv shift rows   : ', end='')
+            decrypt_data = self.show_func(self.inv_shift_rows, decrypt_data)
+            print('Inv sub Bytes    : ', end='')
+            decrypt_data = self.show_func(self.inv_sub_bytes, decrypt_data)
+        
+        print('Round 10: ')
+        print('Add Round key: ', end='')
+        decrypt_data = self.show_func(self.add_round_key, decrypt_data, self.round_keys[:4])
+
+        print('Decrypt data :', decrypt_data)
+
+        print('Decrypt Done!')
+
+        return decrypt_data
+
+    def show_matrix_encrypt(self, data: str) -> str:
+        print('Data to encrypt')
+        encrypt_data = bytes2matrix(data)
+        print_matrix(encrypt_data)
+
+        print('Key')
+        print_matrix(self.matrix_key)
+
+        print('Round 0')
+        print('Add round key')
+        encrypt_data = self.add_round_key(encrypt_data, self.round_keys[:4])
+        print_matrix(encrypt_data)
+        print('__________________')
+
+        for i in range(1, 10):
+            print(f'Round {i}')
+            print('Sub Bytes')
+            encrypt_data = self.sub_bytes(encrypt_data)
+            print_matrix(encrypt_data)
+            print('Shift Rows')
+            encrypt_data = self.shift_rows(encrypt_data)
+            print_matrix(encrypt_data)
+            print('Mix Columns')
+            encrypt_data = self.mix_columns(encrypt_data)
+            print_matrix(encrypt_data)
+            print('Add round key')
+            encrypt_data = self.add_round_key(encrypt_data, self.round_keys[i * 4:(i + 1) * 4])
+            print_matrix(encrypt_data)
+            print('__________________')
+
+        print('Round 10')
+        print('Sub Bytes')
+        encrypt_data = self.sub_bytes(encrypt_data)
+        print_matrix(encrypt_data)
+        print('Shift Rows')
+        encrypt_data = self.shift_rows(encrypt_data)
+        print_matrix(encrypt_data)
+        print('Add round key')
+        encrypt_data = self.add_round_key(encrypt_data, self.round_keys[40:])
+        print_matrix(encrypt_data)
+
+        return matrix2bytes(encrypt_data)
+
+    def show_matrix_decrypt(self, data: str) -> str:
+        print('Data to decrypt')
+        decrypt_data = bytes2matrix(data)
+        print_matrix(decrypt_data)
+
+        print('Round 0')
+        print('Add round key')
+        decrypt_data = self.add_round_key(decrypt_data, self.round_keys[40:])
+        print_matrix(decrypt_data)
+        print('Inv Shift Rows')
+        decrypt_data = self.inv_shift_rows(decrypt_data)
+        print_matrix(decrypt_data)
+        print('Inv Sub Bytes')
+        decrypt_data = self.inv_sub_bytes(decrypt_data)
+        print_matrix(decrypt_data)
+        print('__________________')
+
+        for i in range(9, 0, -1):
+            print(f'Round {10 - i}')
+            print('Add round key')
+            decrypt_data = self.add_round_key(decrypt_data, self.round_keys[i * 4:(i + 1) * 4])
+            print_matrix(decrypt_data)
+            print('Inv Min Columns')
+            decrypt_data = self.inv_mix_columns(decrypt_data)
+            print_matrix(decrypt_data)
+            print('Inv Shift Rows')
+            decrypt_data = self.inv_shift_rows(decrypt_data)
+            print_matrix(decrypt_data)
+            print('Inv Sub Bytes')
+            decrypt_data = self.inv_sub_bytes(decrypt_data)
+            print_matrix(decrypt_data)
+            print('__________________')
+
+        print('Round 10')
+        print('Add round key')
+        encrypt_data = self.add_round_key(decrypt_data, self.round_keys[:4])
+        print_matrix(decrypt_data)
+
+        data = matrix2bytes(decrypt_data)
+        print(data)
+
+        return data
+
+
+
+
+
+
+        
+        
+
+
 
 
 
