@@ -1,4 +1,19 @@
 import os
+import random
+
+def generate_secure_key(length):
+    # Đảm bảo độ dài key là hợp lệ
+    if length <= 0:
+        raise ValueError("Key length should be a positive integer.")
+    
+    # Tạo danh sách các ký tự ASCII
+    all_characters = ''.join(chr(i) for i in range(256))  # Ký tự ASCII từ 0 đến 127
+
+    # Tạo key ngẫu nhiên
+    key = ''.join(random.choice(all_characters) for _ in range(length))
+
+    return key
+
 
 #Xử lý chuyển đổi dữ liệu giữa dạng string và matrix
 def bytes2matrix(bytes):
@@ -281,8 +296,8 @@ class AES:
                 if not data:
                     break
 
-                self.encrypt(data)
-                outfile.write(self.text_encrypt)
+                text_encrypt = self.encrypt(data)
+                outfile.write(text_encrypt)
 
     def decrypt_file(self, input_path, output_path = 'result.dat'):
         with open(input_path, 'rb') as infile, open(output_path, 'wb') as outfile:
@@ -292,9 +307,9 @@ class AES:
                 if not data:
                     break
                 
-                self.decrypt(data)
+                decrypt_text = self.decrypt(data)
                 
-                outfile.write(self.decrypt_text)
+                outfile.write(decrypt_text)
 
     #Process
 
@@ -346,16 +361,16 @@ class AES:
 
     def show_process_decrypt(self, data: str) -> str:
         print('Encrypt data : ', data.hex())
-        print('Round 0: ')
+        print('Round 10: ')
         print('Add Round key: ', end='')
         decrypt_data = self.show_func(self.add_round_key, data, self.round_keys[40:])
-        print('Shift rows   : ', end='')
+        print('Inv shift rows   : ', end='')
         decrypt_data = self.show_func(self.inv_shift_rows, decrypt_data)
-        print('Sub Bytes    : ', end='')
+        print('Inv sub Bytes    : ', end='')
         decrypt_data = self.show_func(self.inv_sub_bytes, decrypt_data)
 
         for i in range(9, 0, -1):
-            print(f'Round {str(10 - i)}: ')
+            print(f'Round {i}: ')
             print('Add Round key    : ', end='')
             decrypt_data = self.show_func(self.add_round_key, decrypt_data, self.round_keys[4 * i: 4 * (i + 1)])
             print('Inv mix columns  : ', end='')
@@ -365,7 +380,7 @@ class AES:
             print('Inv sub Bytes    : ', end='')
             decrypt_data = self.show_func(self.inv_sub_bytes, decrypt_data)
         
-        print('Round 10: ')
+        print('Round 0: ')
         print('Add Round key: ', end='')
         decrypt_data = self.show_func(self.add_round_key, decrypt_data, self.round_keys[:4])
 
@@ -423,7 +438,7 @@ class AES:
         decrypt_data = bytes2matrix(data)
         print_matrix(decrypt_data)
 
-        print('Round 0')
+        print('Round 10')
         print('Add round key')
         decrypt_data = self.add_round_key(decrypt_data, self.round_keys[40:])
         print_matrix(decrypt_data)
@@ -436,7 +451,7 @@ class AES:
         print('__________________')
 
         for i in range(9, 0, -1):
-            print(f'Round {10 - i}')
+            print(f'Round {i}')
             print('Add round key')
             decrypt_data = self.add_round_key(decrypt_data, self.round_keys[i * 4:(i + 1) * 4])
             print_matrix(decrypt_data)
@@ -451,7 +466,7 @@ class AES:
             print_matrix(decrypt_data)
             print('__________________')
 
-        print('Round 10')
+        print('Round 0')
         print('Add round key')
         encrypt_data = self.add_round_key(decrypt_data, self.round_keys[:4])
         print_matrix(decrypt_data)
