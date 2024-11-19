@@ -70,7 +70,10 @@ def change_extension(file_path):
     path, filename = os.path.split(file_path)
     name, extension = os.path.splitext(filename)
     file_type = get_file_type(file_path)
-    new_path = path + '/' + name + '.' + file_type
+    if path != '':
+        new_path = path + '/' + name + '.' + file_type
+    else:
+        new_path = name + '.' + file_type
     # print(file_path, new_path)
     os.rename(file_path, new_path)
 
