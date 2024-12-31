@@ -391,6 +391,12 @@ class AES:
         print('Add Round key: ', end='')
         decrypt_data = self.show_func(self.add_round_key, decrypt_data, self.round_keys[:4])
 
+        while decrypt_data[-1] == 0x00:
+            decrypt_data = decrypt_data[:-1]
+
+        return decrypt_data
+    
+
         print('Decrypt data :', decrypt_data)
 
         print('Decrypt Done!')
