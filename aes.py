@@ -246,10 +246,7 @@ class AES:
 
         self.decrypt_matrix = self.add_round_key(self.decrypt_matrix, self.round_keys[:4])
         
-        while decrypt_data[-1] == 0x00:
-            decrypt_data = decrypt_data[:-1]
-
-        return decrypt_data
+        return matrix2bytes(self.decrypt_matrix)
     
     #Unicode
 
@@ -260,7 +257,6 @@ class AES:
         return encrypt_data
 
     def unicode_decrypt(self, data: str) -> str:
-
         #Input with bytes string but will return uncode string
         decrypt_data = self.decrypt(data)
         data = decrypt_data.decode('utf-8')
@@ -278,6 +274,10 @@ class AES:
         decrypt_data = b''
         for i in range(0, len(data), 16):
             decrypt_data += self.decrypt(data[i:i + 16])
+        
+        while decrypt_data[-1] == 0x00:
+            decrypt_data = decrypt_data[:-1]
+
         return decrypt_data
 
     #Unicode stirng larger than 16 bytes
@@ -310,7 +310,6 @@ class AES:
         with open(input_path, 'rb') as infile, open(output_path, 'wb') as outfile:
             while True:
                 data = infile.read(16)
-                
                 if not data:
                     break
                 
@@ -393,9 +392,6 @@ class AES:
 
         while decrypt_data[-1] == 0x00:
             decrypt_data = decrypt_data[:-1]
-
-        return decrypt_data
-    
 
         print('Decrypt data :', decrypt_data)
 
