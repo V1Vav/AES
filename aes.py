@@ -245,7 +245,11 @@ class AES:
             self.decrypt_matrix = self.inv_sub_bytes(self.decrypt_matrix)
 
         self.decrypt_matrix = self.add_round_key(self.decrypt_matrix, self.round_keys[:4])
-        return matrix2bytes(self.decrypt_matrix)
+        
+        while decrypt_data[-1] == 0x00:
+            decrypt_data = decrypt_data[:-1]
+
+        return decrypt_data
     
     #Unicode
 
